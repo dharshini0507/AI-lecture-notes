@@ -14,7 +14,7 @@ import google.generativeai as genai
 # GEMINI / GOOGLE API SETUP
 # ==========================
 api_key = "your api key"  # Replace with your valid API key
-genai.configure(api_key=api_key)
+genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # ==========================
 # FUNCTION TO GENERATE SUMMARY
@@ -161,4 +161,5 @@ if uploaded_file:
         file_name="LectureNotes.pdf",
         mime="application/pdf"
     )
+
 
