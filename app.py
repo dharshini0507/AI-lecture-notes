@@ -9,6 +9,16 @@ from reportlab.lib import colors
 import textwrap
 import tempfile
 import google.generativeai as genai
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+# ==========================
+# REGISTER CUSTOM FONTS FOR PDF
+# ==========================
+pdfmetrics.registerFont(TTFont('Orbitron-Bold', 'fonts/Orbitron-Bold.ttf'))
+pdfmetrics.registerFont(TTFont('Poppins-Bold', 'fonts/Poppins-Bold.ttf'))
+pdfmetrics.registerFont(TTFont('FiraCode-Bold', 'fonts/FiraCode-Bold.ttf'))
+pdfmetrics.registerFont(TTFont('FiraCode-Regular', 'fonts/FiraCode-Regular.ttf'))
 
 # ==========================
 # GEMINI / GOOGLE API SETUP
@@ -19,7 +29,6 @@ genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 # FUNCTIONS
 # ==========================
 def chunked_generate(prompt_text, model_name="models/gemini-2.5-flash", chunk_size=1500):
-    """Split text into chunks to avoid 500 errors"""
     chunks = textwrap.wrap(prompt_text, chunk_size)
     results = []
     model = genai.GenerativeModel(model_name)
@@ -46,8 +55,8 @@ def generate_questions(transcript):
 # PAGE CONFIG
 # ==========================
 st.set_page_config(
-    page_title="AI Lecture Notes",
-    page_icon="🤖",
+    page_title="AI Lecture Notes Generator",
+    page_icon="📝",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -62,12 +71,17 @@ if theme == "Dark":
     text_color = "#f1f1f1"
     textarea_bg = "#111827"
     textarea_text = "#e5e7eb"
+    glow_color = "#00ffff"
 else:
     bg_color = "#ffffff"
     text_color = "#111827"
     textarea_bg = "#f5f5f5"
     textarea_text = "#111827"
+    glow_color = "#0077ff"
 
+# ==========================
+# STYLES
+# ==========================
 st.markdown(f"""
 <style>
 body, .stApp {{
@@ -76,9 +90,11 @@ body, .stApp {{
     font-family: 'Poppins', sans-serif;
 }}
 h1, h2, h3 {{
-    color: #00aaff;
     font-family: 'Orbitron', sans-serif;
-    text-shadow: 0 0 8px #00aaff;
+    color: {glow_color};
+    text-align: center;
+    font-weight: bold;
+    text-shadow: 0 0 8px {glow_color}, 0 0 16px {glow_color};
 }}
 .stTextArea>div>textarea {{
     background-color: {textarea_bg};
@@ -93,6 +109,7 @@ h1, h2, h3 {{
     border-radius: 12px;
     padding: 10px 22px;
     font-weight: bold;
+    transition: 0.3s;
 }}
 .stButton>button:hover {{
     transform: scale(1.05);
@@ -103,12 +120,12 @@ h1, h2, h3 {{
 # ==========================
 # TITLE
 # ==========================
-st.markdown("<h1>🤖 AI Lecture Notes</h1>", unsafe_allow_html=True)
+st.markdown("<h1>📝 AI Lecture Notes Generator</h1>", unsafe_allow_html=True)
 st.markdown("<h3>🎓 'Listen. Learn. Summarize. Revise.'</h3>", unsafe_allow_html=True)
-st.write("Upload your lecture audio, get your transcript, AI summary, smart study tips, and PDF instantly!")
+st.write("Upload your lecture audio, get your transcript, AI summary, study tips, and PDF instantly!")
 
 # ==========================
-# UPLOAD SECTION
+# UPLOAD AUDIO
 # ==========================
 uploaded_file = st.file_uploader("🎧 Upload Lecture Audio (.mp3, .wav, .m4a)", type=["mp3", "wav", "m4a"])
 
@@ -145,46 +162,29 @@ if uploaded_file:
                                 rightMargin=50, leftMargin=50, topMargin=50, bottomMargin=50)
         styles = getSampleStyleSheet()
 
-        # Custom Styles
         title_style = ParagraphStyle(
-            "TitleStyle",
-            parent=styles["Heading1"],
-            fontName="Orbitron-Bold",
-            fontSize=22,
-            alignment=TA_CENTER,
-            textColor=colors.HexColor("#00aaff"),
-            leading=28
+            "TitleStyle", parent=styles["Heading1"],
+            fontName="Orbitron-Bold", fontSize=22, alignment=TA_CENTER,
+            textColor=colors.HexColor("#00ffff"), leading=28
         )
         subtitle_style = ParagraphStyle(
-            "SubtitleStyle",
-            parent=styles["Heading2"],
-            fontName="Poppins-Bold",
-            fontSize=16,
-            textColor=colors.HexColor("#0072ff"),
-            backColor=colors.HexColor("#e0f7fa"),
-            leading=20
+            "SubtitleStyle", parent=styles["Heading2"],
+            fontName="Poppins-Bold", fontSize=16,
+            textColor=colors.HexColor("#0072ff"), backColor=colors.HexColor("#e0f7fa"), leading=20
         )
         body_style = ParagraphStyle(
-            "BodyStyle",
-            parent=styles["Normal"],
-            fontName="FiraCode-Regular",
-            fontSize=11,
-            leading=14,
-            textColor=colors.HexColor("#0f172a")
+            "BodyStyle", parent=styles["Normal"],
+            fontName="FiraCode-Regular", fontSize=11, leading=14, textColor=colors.HexColor("#0f172a")
         )
         highlight_style = ParagraphStyle(
-            "HighlightStyle",
-            parent=styles["Normal"],
-            fontName="FiraCode-Bold",
-            fontSize=11,
-            leading=14,
-            textColor=colors.HexColor("#0f172a"),
-            backColor=colors.HexColor("#fffacd")
+            "HighlightStyle", parent=styles["Normal"],
+            fontName="FiraCode-Bold", fontSize=11, leading=14,
+            textColor=colors.HexColor("#0f172a"), backColor=colors.HexColor("#fffacd")
         )
 
         story = []
         story.append(Spacer(1, 20))
-        story.append(Paragraph("🤖 AI Lecture Notes", title_style))
+        story.append(Paragraph("📝 AI Lecture Notes Generator", title_style))
         story.append(Spacer(1, 20))
 
         # Transcript
@@ -210,8 +210,7 @@ if uploaded_file:
         doc.build(story)
         pdf_buffer.seek(0)
 
-        # Download
+        # Download PDF
         if st.download_button("📥 Download PDF", data=pdf_buffer,
                               file_name="AILectureNotes.pdf", mime="application/pdf"):
-            st.balloons()
             st.success("🎉 Notes successfully downloaded with AI summary, questions & tips!")
