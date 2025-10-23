@@ -9,16 +9,6 @@ from reportlab.lib import colors
 import textwrap
 import tempfile
 import google.generativeai as genai
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-
-# ==========================
-# REGISTER CUSTOM FONTS FOR PDF
-# ==========================
-pdfmetrics.registerFont(TTFont('Orbitron-Bold', 'fonts/Orbitron-Bold.ttf'))
-pdfmetrics.registerFont(TTFont('Poppins-Bold', 'fonts/Poppins-Bold.ttf'))
-pdfmetrics.registerFont(TTFont('FiraCode-Bold', 'fonts/FiraCode-Bold.ttf'))
-pdfmetrics.registerFont(TTFont('FiraCode-Regular', 'fonts/FiraCode-Regular.ttf'))
 
 # ==========================
 # GEMINI / GOOGLE API SETUP
@@ -89,17 +79,20 @@ body, .stApp {{
     color: {text_color};
     font-family: 'Poppins', sans-serif;
 }}
-h1, h2, h3 {{
-    font-family: 'Orbitron', sans-serif;
+h1 {{
     color: {glow_color};
     text-align: center;
     font-weight: bold;
-    text-shadow: 0 0 8px {glow_color}, 0 0 16px {glow_color};
+    text-shadow: 0 0 10px {glow_color}, 0 0 20px {glow_color};
+}}
+h2, h3 {{
+    color: {glow_color};
+    font-weight: bold;
 }}
 .stTextArea>div>textarea {{
     background-color: {textarea_bg};
     color: {textarea_text};
-    font-family: 'Fira Code', monospace;
+    font-family: 'Courier', monospace;
     border-radius: 12px;
     padding: 12px;
 }}
@@ -164,21 +157,21 @@ if uploaded_file:
 
         title_style = ParagraphStyle(
             "TitleStyle", parent=styles["Heading1"],
-            fontName="Orbitron-Bold", fontSize=22, alignment=TA_CENTER,
-            textColor=colors.HexColor("#00ffff"), leading=28
+            fontName="Helvetica-Bold", fontSize=22, alignment=TA_CENTER,
+            textColor=colors.HexColor(glow_color.replace('#','0x')), leading=28
         )
         subtitle_style = ParagraphStyle(
             "SubtitleStyle", parent=styles["Heading2"],
-            fontName="Poppins-Bold", fontSize=16,
+            fontName="Helvetica-Bold", fontSize=16,
             textColor=colors.HexColor("#0072ff"), backColor=colors.HexColor("#e0f7fa"), leading=20
         )
         body_style = ParagraphStyle(
             "BodyStyle", parent=styles["Normal"],
-            fontName="FiraCode-Regular", fontSize=11, leading=14, textColor=colors.HexColor("#0f172a")
+            fontName="Courier", fontSize=11, leading=14, textColor=colors.HexColor("#0f172a")
         )
         highlight_style = ParagraphStyle(
             "HighlightStyle", parent=styles["Normal"],
-            fontName="FiraCode-Bold", fontSize=11, leading=14,
+            fontName="Courier-Bold", fontSize=11, leading=14,
             textColor=colors.HexColor("#0f172a"), backColor=colors.HexColor("#fffacd")
         )
 
@@ -213,4 +206,5 @@ if uploaded_file:
         # Download PDF
         if st.download_button("📥 Download PDF", data=pdf_buffer,
                               file_name="AILectureNotes.pdf", mime="application/pdf"):
+            st.balloons()
             st.success("🎉 Notes successfully downloaded with AI summary, questions & tips!")
