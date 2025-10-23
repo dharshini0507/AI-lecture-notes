@@ -14,11 +14,10 @@ import google.generativeai as genai
 # ==========================
 # GEMINI / GOOGLE API SETUP
 # ==========================
-api_key = "your api key"  # Replace with your valid API key
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # ==========================
-# FUNCTION TO GENERATE SUMMARY
+# FUNCTIONS
 # ==========================
 def generate_summary(transcript):
     try:
@@ -30,90 +29,95 @@ def generate_summary(transcript):
     except Exception as e:
         return f"❌ Error generating summary: {e}"
 
-# ==========================
-# PAGE CONFIG & THEME
-# ==========================
-st.set_page_config(page_title="Lecture Notes Assistant", page_icon="📝", layout="wide")
+def generate_questions(transcript):
+    try:
+        model = genai.GenerativeModel("models/gemini-2.5-flash")
+        response = model.generate_content(
+            f"Generate 5 practice questions and 5 quick study tips for revision based on this lecture:\n\n{transcript}"
+        )
+        return response.text
+    except Exception as e:
+        return f"❌ Error generating questions: {e}"
 
-dark_mode = st.sidebar.checkbox("🌙 Dark Mode", value=True)
-bg_color, text_color, accent_color = (
-    ("#0d1117", "#c9d1d9", "#58a6ff") if dark_mode else ("#ffffff", "#0d1117", "#4a00e0")
-)
+# ==========================
+# PAGE CONFIG
+# ==========================
+st.set_page_config(page_title="🎓 Smart Lecture Notes AI Assistant", page_icon="🧠", layout="wide")
 
-st.markdown(f"""
+st.markdown("""
 <style>
-body, .stApp {{ background-color: {bg_color}; color: {text_color}; }}
-h1, h2, h3 {{ color: {accent_color}; text-shadow: 0 0 10px {accent_color}; }}
-.stButton>button {{
-    background: linear-gradient(90deg, #ff6ec4, #7873f5); 
-    color: white; 
-    border-radius: 12px; 
-    padding: 10px 20px;
-}}
-.stButton>button:hover {{ transform: scale(1.05); }}
-textarea, .stTextArea>div>textarea {{ 
-    background-color: #161b22; 
-    color: #c9d1d9; 
-    border-radius: 8px; 
-}}
-div[data-baseweb="file-uploader"] {{ 
-    background-color: #161b22 !important; 
-    border: 2px dashed {accent_color} !important; 
-    border-radius: 12px; 
-}}
+body, .stApp {
+    background: linear-gradient(145deg, #0f2027, #203a43, #2c5364);
+    color: #f1f1f1;
+    font-family: 'Poppins', sans-serif;
+}
+h1, h2, h3 {
+    color: #00e0ff;
+    text-shadow: 0 0 10px #00e0ff;
+    font-family: 'Orbitron', sans-serif;
+}
+.stTextArea>div>textarea {
+    background-color: #111827;
+    color: #e5e7eb;
+    font-family: 'Fira Code', monospace;
+    border-radius: 12px;
+    padding: 12px;
+}
+.stButton>button {
+    background: linear-gradient(90deg, #00c6ff, #0072ff);
+    color: white;
+    border-radius: 12px;
+    padding: 10px 22px;
+    font-weight: bold;
+}
+.stButton>button:hover {
+    transform: scale(1.05);
+}
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================
-# PAGE TITLE
+# TITLE
 # ==========================
-st.title("📝 AI Lecture Voice-to-Notes Assistant")
-st.write("Upload your lecture audio, get transcript, summary, and download PDF immediately.")
+st.markdown("<h1>🧠 Smart Lecture Voice-to-Notes Assistant</h1>", unsafe_allow_html=True)
+st.markdown("<h3>🎓 'Listen. Learn. Summarize. Revise.'</h3>", unsafe_allow_html=True)
+st.write("Upload your lecture audio, get your transcript, AI summary, smart study tips, and PDF instantly!")
 
 # ==========================
-# UPLOAD AUDIO
+# UPLOAD SECTION
 # ==========================
-uploaded_file = st.file_uploader("Upload Lecture Audio (.mp3, .wav, .m4a)", type=["mp3", "wav", "m4a"])
+uploaded_file = st.file_uploader("🎧 Upload Lecture Audio (.mp3, .wav, .m4a)", type=["mp3", "wav", "m4a"])
+
 if uploaded_file:
     st.audio(uploaded_file, format="audio/wav")
 
-    # ==========================
-    # TRANSCRIBE (With Error Handling)
-    # ==========================
-    with st.spinner("Transcribing audio... ⏳"):
+    with st.spinner("🎙️ Transcribing audio..."):
         try:
             whisper_model = whisper.load_model("tiny")
 
-            # Save the uploaded audio to a temp file
             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
                 tmp.write(uploaded_file.read())
                 tmp_path = tmp.name
 
-            # Check if file exists before transcribing
-            if not os.path.exists(tmp_path):
-                st.error("❌ Audio file was not saved properly.")
-            else:
-                result = whisper_model.transcribe(tmp_path)
-                transcript = result["text"]
-                st.text_area("Transcript", transcript, height=200)
+            result = whisper_model.transcribe(tmp_path)
+            transcript = result["text"]
+            st.text_area("📝 Transcript", transcript, height=200)
 
-        except FileNotFoundError:
-            st.error("❌ ffmpeg not found or audio file missing. Add 'ffmpeg' in packages.txt for deployment.")
-            st.stop()
         except Exception as e:
-            st.error(f"❌ Unexpected error during transcription: {e}")
+            st.error(f"❌ Error during transcription: {e}")
             st.stop()
 
-    # ==========================
-    # SUMMARY
-    # ==========================
     if 'transcript' in locals() and transcript.strip():
-        with st.spinner("Generating summary... ⏳"):
+        with st.spinner("✨ Generating AI Summary..."):
             summary_text = generate_summary(transcript)
-            st.text_area("Summary", summary_text, height=200)
+            st.text_area("📚 AI Summary", summary_text, height=200)
+
+        with st.spinner("🧠 Creating Study Questions & Tips..."):
+            questions_text = generate_questions(transcript)
+            st.text_area("🎯 AI-Generated Questions & Study Tips", questions_text, height=220)
 
         # ==========================
-        # PDF DOWNLOAD WITH STYLING
+        # BUILD PDF
         # ==========================
         pdf_buffer = BytesIO()
         doc = SimpleDocTemplate(pdf_buffer, pagesize=letter,
@@ -127,58 +131,57 @@ if uploaded_file:
             fontName="Helvetica-Bold",
             fontSize=22,
             alignment=TA_CENTER,
-            textColor=colors.HexColor("#ff6ec4"),
+            textColor=colors.HexColor("#00c6ff"),
             leading=28
         )
-
         subtitle_style = ParagraphStyle(
             "SubtitleStyle",
             parent=styles["Heading2"],
             fontName="Helvetica-BoldOblique",
             fontSize=16,
-            textColor=colors.HexColor("#4a90e2"),
-            backColor=colors.HexColor("#f0f8ff"),
+            textColor=colors.HexColor("#0072ff"),
+            backColor=colors.HexColor("#e0f7fa"),
             leading=20
         )
-
         body_style = ParagraphStyle(
             "BodyStyle",
             parent=styles["Normal"],
             fontName="Courier",
             fontSize=11,
             leading=14,
-            textColor=colors.HexColor("#161b22")
+            textColor=colors.HexColor("#0f172a")
         )
 
-        # Build the PDF Story
         story = []
-
-        # Title
         story.append(Spacer(1, 20))
-        story.append(Paragraph("📝 Lecture Notes", title_style))
+        story.append(Paragraph("🧠 Smart Lecture Notes", title_style))
         story.append(Spacer(1, 20))
 
-        # Transcript Section
-        story.append(Paragraph("Transcript:", subtitle_style))
+        # Transcript
+        story.append(Paragraph("📝 Transcript:", subtitle_style))
         story.append(Spacer(1, 10))
         for line in textwrap.wrap(transcript, 90):
             story.append(Paragraph(line, body_style))
         story.append(Spacer(1, 20))
 
-        # Summary Section
-        story.append(Paragraph("Summary:", subtitle_style))
+        # Summary
+        story.append(Paragraph("📚 AI Summary:", subtitle_style))
         story.append(Spacer(1, 10))
         for line in textwrap.wrap(summary_text, 90):
             story.append(Paragraph(line, body_style))
+        story.append(Spacer(1, 20))
 
-        # Build PDF
+        # Questions & Tips
+        story.append(Paragraph("🎯 AI-Generated Practice Questions & Study Tips:", subtitle_style))
+        story.append(Spacer(1, 10))
+        for line in textwrap.wrap(questions_text, 90):
+            story.append(Paragraph(line, body_style))
+
         doc.build(story)
         pdf_buffer.seek(0)
 
-        # Download button
-        st.download_button(
-            label="📥 Download PDF",
-            data=pdf_buffer,
-            file_name="LectureNotes.pdf",
-            mime="application/pdf"
-        )
+        # Download
+        if st.download_button("📥 Download PDF", data=pdf_buffer,
+                              file_name="SmartLectureNotes.pdf", mime="application/pdf"):
+            st.balloons()
+            st.success("🎉 Notes successfully downloaded with AI summary, questions & tips!")
